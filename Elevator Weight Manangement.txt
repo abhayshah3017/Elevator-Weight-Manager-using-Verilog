@@ -1,0 +1,115 @@
+Module Elevator (counter_op,m,clk,reset,avg_weight,total_weight,final_out,max_weight);
+//counter variables
+output reg [3:0]counter_op; //output of counter
+input m,clk,reset; //mode:1 for up,0 for down , clock , reset:1 for reset
+//multiplier variables
+input [3:0]avg_weight; //Avg weight of person
+output [7:0]total_weight; //total weight of person
+//comparator variables
+output reg final_out;
+input [7:0]max_weight;
+//code for 4bit mod counter
+always@(posedge clk)
+begin
+if(reset) // reset counter
+counter_op=0;
+else //postive edge counter
+ if(m)
+ counter_op<=counter_op+1;
+else
+ counter_op<=counter_op-1;
+end
+//calculating total weight using Multiplier
+Multiplier M1(counter_op,avg_weight,total_weight);
+//comparing weight in elevator and its maximum capacity
+always@(total_weight or max_weight)
+begin
+if(total_weight>max_weight)
+final_out=1; // when weight in elevator is overloaded output is 1 else 0
+else
+ final_out=0;
+end
+endmodule
+//4*4 bit Array Multiplier
+module Multiplier(X, Y, P);
+//4-bit inputs X and Y Multiplicand and Multiplier
+input[3:0] X;
+input[3:0] Y;
+//Output P ,product of X and Y
+output[7:0] P;
+//Carry
+wire[3:0] C1;
+wire[3:0] C2;
+wire[3:0] C3;
+//Sum
+wire[3:0] S1;
+wire[3:0] S2;
+wire[3:0] S3;
+//rows of partial product
+wire[3:0] XY0;
+wire[3:0] XY1;
+wire[3:0] XY2;
+wire[3:0] XY3;
+//All product bits of XiYj are generated using an AND gate
+assign XY0[0] = X[0] & Y[0] ;
+assign XY1[0] = X[0] & Y[1] ;
+assign XY0[1] = X[1] & Y[0] ;
+assign XY1[1] = X[1] & Y[1] ;
+assign XY0[2] = X[2] & Y[0] ;
+assign XY1[2] = X[2] & Y[1] ;
+assign XY0[3] = X[3] & Y[0] ;
+assign XY1[3] = X[3] & Y[1] ;
+assign XY2[0] = X[0] & Y[2] ;
+assign XY3[0] = X[0] & Y[3] ;
+assign XY2[1] = X[1] & Y[2] ;
+assign XY3[1] = X[1] & Y[3] ;
+assign XY2[2] = X[2] & Y[2] ;
+assign XY3[2] = X[2] & Y[3] ;
+assign XY2[3] = X[3] & Y[2] ;
+assign XY3[3] = X[3] & Y[3] ;
+//Half Adders are used to add the partial products ,when there are only two inputs A,B
+//and there is no carry from previous inputs,
+HalfAdder HA1 (XY0[1], XY1[0], C1[0], S1[0]);//we use half adder here since there will be no
+carry at this step
+HalfAdder HA2 (XY1[3], C1[2], C1[3], S1[3]);//because each partial product row is shifted by
+1 place
+HalfAdder HA3 (S1[1], XY2[0], C2[0], S2[0]);
+HalfAdder HA4 (S2[1], XY3[0], C3[0], S3[0]);
+//Full Adders are used to add the partial products,when there are 3 inputs A,B,Cin
+FullAdder FA1 (XY0[2], XY1[1], C1[0], C1[1], S1[1]);
+FullAdder FA2 (XY0[3], XY1[2], C1[1], C1[2], S1[2]);
+FullAdder FA3 (S1[2], XY2[1], C2[0], C2[1], S2[1]);
+FullAdder FA4 (S1[3], XY2[2], C2[1], C2[2], S2[2]);
+FullAdder FA5 (C1[3], XY2[3], C2[2], C2[3], S2[3]);
+FullAdder FA6 (S2[2], XY3[1], C3[0], C3[1], S3[1]);
+FullAdder FA7 (S2[3], XY3[2], C3[1], C3[2], S3[2]);
+FullAdder FA8 (C2[3], XY3[3], C3[2], C3[3], S3[3]);
+//Final output of adders constitute Final product(Multiplication) P of 8 bits(max)
+assign P[0] = XY0[0] ; //The first partial prouduct will directly be the first bit P[0] of P
+assign P[1] = S1[0] ;
+assign P[2] = S2[0] ;
+assign P[3] = S3[0] ;
+assign P[4] = S3[1] ;
+assign P[5] = S3[2] ;
+assign P[6] = S3[3] ;
+assign P[7] = C3[3] ; //The carry of the last Full adder will be the last bit p[7] of P
+endmodule
+//1-bit Full Adder
+module FullAdder (X, Y, Cin, Cout, Sum);
+input X;
+input Y;
+input Cin;
+output Cout;
+output Sum;
+assign Sum = X ^ Y ^ Cin ;
+assign Cout = (X & Y) | (X & Cin) | (Y & Cin) ;
+endmodule
+//1-bit Half Adder
+module HalfAdder (X, Y, Cout, Sum);
+input X;
+input Y;
+output Cout;
+output Sum;
+assign Sum = X ^ Y ;
+assign Cout = X & Y ;
+endmodule
